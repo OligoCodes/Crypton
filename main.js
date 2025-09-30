@@ -1,6 +1,21 @@
 class CryptoApp {
     constructor() {
         this.apiBase = 'https://api.coingecko.com/api/v3';
+        // quick symbol -> id map for popular coins (speeds up common searches)
+        this.symbolMap = {
+            btc: 'bitcoin',
+            eth: 'ethereum',
+            bnb: 'binancecoin',
+            sol: 'solana',
+            doge: 'dogecoin',
+            ada: 'cardano',
+            xrp: 'ripple',
+            dot: 'polkadot',
+            matic: 'matic-network',
+            shib: 'shiba-inu',
+            ltc: 'litecoin',
+            link: 'chainlink'
+        };
         this.defaultCoins = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'dogecoin'];
         this.init();
     }
@@ -15,12 +30,15 @@ class CryptoApp {
         const searchBtn = document.getElementById('searchBtn');
         const searchInput = document.getElementById('searchInput');
 
+        // Defensive: only attach if elements exist
         if (searchBtn) {
             searchBtn.addEventListener('click', () => this.handleSearch());
         }
         if (searchInput) {
             searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.handleSearch();
+                if (e.key === 'Enter') {
+                    this.handleSearch();
+                }
             });
         }
 
@@ -35,7 +53,21 @@ class CryptoApp {
         const mobileNav = document.getElementById('mobileNav');
 
         // If mobile menu or nav items aren't present, skip wiring them
-        if (!navLinks || !mobileNavLinks || !mobileMenuToggle || !mobileNav) return;
+        if (!mobileMenuToggle || !mobileNav) {
+            // still wire desktop links if available
+            if (navLinks && navLinks.length) {
+                navLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        const href = link.getAttribute('href');
+                        link.classList.add('active');
+                        this.scrollToSection(href);
+                    });
+                });
+            }
+            return;
+        }
 
         // Desktop navigation
         navLinks.forEach(link => {
@@ -115,10 +147,11 @@ class CryptoApp {
                 behavior: 'smooth'
             });
         } else if (targetId === 'search') {
-            const searchSection = document.querySelector('.search-section');
-            if (searchSection) {
-                searchSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            const s = document.querySelector('.search-section');
+            if (s) s.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
         }
     }
 
@@ -126,7 +159,6 @@ class CryptoApp {
         const mobileNav = document.getElementById('mobileNav');
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         if (!mobileNav || !mobileMenuToggle) return;
-
         const toggleIcon = mobileMenuToggle.querySelector('i');
 
         mobileNav.classList.toggle('active');
@@ -142,7 +174,6 @@ class CryptoApp {
         const mobileNav = document.getElementById('mobileNav');
         const mobileMenuToggle = document.getElementById('mobileMenuToggle');
         if (!mobileNav || !mobileMenuToggle) return;
-
         const toggleIcon = mobileMenuToggle.querySelector('i');
 
         mobileNav.classList.remove('active');
@@ -152,16 +183,16 @@ class CryptoApp {
 
     setupThemeToggle() {
         const themeToggle = document.getElementById('themeToggle');
-        if (!themeToggle) return;
-
         const savedTheme = localStorage.getItem('theme') || 'light';
         this.setTheme(savedTheme);
 
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            this.setTheme(newTheme);
-        });
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                this.setTheme(newTheme);
+            });
+        }
     }
 
     setTheme(theme) {
@@ -173,46 +204,63 @@ class CryptoApp {
 
         if (themeIcon) themeIcon.className = theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
         if (themeText) themeText.textContent = theme === 'dark' ? 'Dark' : 'Light';
-
-        // redraw placeholders if necessary
-        this.redrawPlaceholders();
-    }
-
-    // small helper to repaint placeholders after theme change
-    redrawPlaceholders() {
-        const canvases = document.querySelectorAll('.chart-canvas');
-        canvases.forEach(c => {
-            // if canvas has no data, re-draw placeholder to pick up new theme
-            const hasData = c.dataset && c.dataset.prices;
-            if (!hasData) this.showChartPlaceholder(c.id);
-        });
     }
 
     // ------------ Search & Loading -------------
     async handleSearch() {
-        const input = document.getElementById('searchInput');
-        if (!input) return;
-        const query = input.value.trim();
+        const inputEl = document.getElementById('searchInput');
+        if (!inputEl) return;
+        const raw = inputEl.value || '';
+        const query = raw.trim();
         if (!query) return;
 
         this.showLoading();
         this.hideError();
 
+        const q = query.toLowerCase();
+
+        // quick symbol map check
+        if (this.symbolMap[q]) {
+            await this.loadSpecificCoin(this.symbolMap[q]);
+            this.hideLoading();
+            return;
+        }
+
+        // fallback: CoinGecko search endpoint
         try {
             const searchUrl = `${this.apiBase}/search?query=${encodeURIComponent(query)}`;
-            const searchData = await this._safeFetchJson(searchUrl);
+            const res = await fetch(searchUrl, { cache: 'no-store' });
+
+            if (!res.ok) {
+                if (!navigator.onLine) {
+                    this.showError('Please check your internet connection.');
+                } else {
+                    this.showError('Failed to search cryptocurrency. Please reload the page.');
+                }
+                this.hideLoading();
+                return;
+            }
+
+            const searchData = await res.json();
             if (searchData && Array.isArray(searchData.coins) && searchData.coins.length > 0) {
-                // prefer exact symbol match (user likely typed BTC, ETH)
-                const q = query.toLowerCase();
+                // prefer exact symbol or id match
                 const exactBySymbol = searchData.coins.find(c => c.symbol && c.symbol.toLowerCase() === q);
                 const exactById = searchData.coins.find(c => c.id && c.id.toLowerCase() === q);
                 const chosen = exactBySymbol || exactById || searchData.coins[0];
-                await this.loadSpecificCoin(chosen.id);
+                if (chosen && chosen.id) {
+                    await this.loadSpecificCoin(chosen.id);
+                } else {
+                    this.showError(`Coin "${query}" not found on CoinGecko.`);
+                }
             } else {
-                this.showError(`No cryptocurrency found for "${query}". Please try full name or symbol. Please reload the page.`);
+                this.showError(`Coin "${query}" not found on CoinGecko.`);
             }
         } catch (err) {
-            this.showError('Error searching cryptocurrency. Please reload the page.');
+            if (!navigator.onLine) {
+                this.showError('Please check your internet connection.');
+            } else {
+                this.showError('Failed to search cryptocurrency. Please reload the page.');
+            }
         } finally {
             this.hideLoading();
         }
@@ -221,10 +269,15 @@ class CryptoApp {
     async loadDefaultCoins() {
         this.showLoading();
         this.hideError();
+
         try {
             await this.loadCoins(this.defaultCoins);
-        } catch (err) {
-            this.showError('Error loading default coins. Please reload the page.');
+        } catch (error) {
+            if (!navigator.onLine) {
+                this.showError('Please check your internet connection.');
+            } else {
+                this.showError('Failed to load cryptocurrency data. Please reload the page.');
+            }
         } finally {
             this.hideLoading();
         }
@@ -235,98 +288,106 @@ class CryptoApp {
             this.showError('Invalid coin requested. Please try again.');
             return;
         }
+
         this.showLoading();
         this.hideError();
+
         try {
             await this.loadCoins([coinId]);
-        } catch (err) {
-            this.showError(`Error loading data for "${coinId}". Please reload the page.`);
+        } catch (error) {
+            if (!navigator.onLine) {
+                this.showError('Please check your internet connection.');
+            } else {
+                this.showError('Failed to load cryptocurrency data. Please reload the page.');
+            }
         } finally {
             this.hideLoading();
         }
     }
 
     async loadCoins(coinIds) {
+        // coinIds expected as array
         if (!coinIds || coinIds.length === 0) return;
-
-        const grid = document.getElementById('cryptoGrid');
-        if (!grid) return;
 
         const coinIdsString = coinIds.join(',');
         const marketsUrl = `${this.apiBase}/coins/markets?vs_currency=usd&ids=${encodeURIComponent(coinIdsString)}&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h`;
 
-        let coins;
         try {
-            coins = await this._safeFetchJson(marketsUrl);
-        } catch (err) {
-            this.showError('Error fetching market data. Please reload the page.');
-            return;
-        }
+            const response = await fetch(marketsUrl, { cache: 'no-store' });
 
-        if (!Array.isArray(coins) || coins.length === 0) {
-            this.showError('No market data returned. The coin may not exist on CoinGecko. Please reload the page.');
-            return;
-        }
+            if (!response.ok) {
+                if (!navigator.onLine) {
+                    this.showError('Please check your internet connection.');
+                } else if (response.status === 404) {
+                    this.showError('Coin not found on CoinGecko.');
+                } else {
+                    this.showError('Failed to fetch market data. Please reload the page.');
+                }
+                return;
+            }
 
-        // Clear existing content
-        grid.innerHTML = '';
+            const coins = await response.json();
 
-        for (const coin of coins) {
-            // keep creating cards even if one fails
-            try {
+            if (!coins || coins.length === 0) {
+                this.showError('No market data returned. The coin may not exist on CoinGecko.');
+                return;
+            }
+
+            const gridEl = document.getElementById('cryptoGrid');
+            if (!gridEl) return;
+            gridEl.innerHTML = '';
+
+            // Load each coin with its chart
+            for (const coin of coins) {
                 await this.createCoinCard(coin);
-            } catch (err) {
-                // create a lightweight placeholder card so UI remains stable
-                const fallback = document.createElement('div');
-                fallback.className = 'crypto-card error-card';
-                fallback.innerHTML = `
-                    <div class="crypto-header">
-                        <div class="crypto-info">
-                            <h3>${coin?.name || coin?.id || 'Unknown'}</h3>
-                            <div class="crypto-symbol">${(coin?.symbol || '').toUpperCase()}</div>
-                        </div>
-                    </div>
-                    <div class="crypto-error">Data unavailable. Please reload the page.</div>
-                `;
-                grid.appendChild(fallback);
+            }
+        } catch (err) {
+            if (!navigator.onLine) {
+                this.showError('Please check your internet connection.');
+            } else {
+                this.showError('Failed to fetch market data. Please reload the page.');
             }
         }
     }
 
     // ------------ Card & Chart -------------
     async createCoinCard(coin) {
-        if (!coin || !coin.id) throw new Error('Invalid coin object');
-
-        const grid = document.getElementById('cryptoGrid');
-        if (!grid) throw new Error('#cryptoGrid not found');
-
         const card = document.createElement('div');
         card.className = 'crypto-card';
 
-        const name = coin.name || coin.id;
-        const symbol = (coin.symbol || '').toUpperCase();
-        const image = coin.image || '';
-        const price = coin.current_price != null ? this.formatNumber(coin.current_price) : '-';
-        const marketCap = coin.market_cap != null ? this.formatLargeNumber(coin.market_cap) : '-';
-        const change24 = coin.price_change_percentage_24h != null ? coin.price_change_percentage_24h : 0;
+        // Get chart data
+        let chartData = null;
+        try {
+            const chartResponse = await fetch(`${this.apiBase}/coins/${coin.id}/market_chart?vs_currency=usd&days=1`, { cache: 'no-store' });
+            if (chartResponse && chartResponse.ok) {
+                chartData = await chartResponse.json();
+            }
+        } catch (error) {
+            // fall back silently to demo series (no console logs)
+            chartData = null;
+        }
+
+        // If chartData is null, we'll generate fallback below
+
+        const change24 = typeof coin.price_change_percentage_24h === 'number' ? coin.price_change_percentage_24h : 0;
         const changeClass = change24 >= 0 ? 'change-positive' : 'change-negative';
         const changeIcon = change24 >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
         card.innerHTML = `
             <div class="crypto-header">
-                <img src="${image}" alt="${name} logo" class="crypto-logo" onerror="this.style.visibility='hidden'">
+                <img src="${coin.image || ''}" alt="${coin.name}" class="crypto-logo" onerror="this.style.visibility='hidden'">
                 <div class="crypto-info">
-                    <h3>${name}</h3>
-                    <div class="crypto-symbol">${symbol}</div>
+                    <h3>${coin.name}</h3>
+                    <div class="crypto-symbol">${(coin.symbol || '').toUpperCase()}</div>
                 </div>
             </div>
 
-            <div class="crypto-price">$${price}</div>
+            <div class="crypto-price">$${this.formatNumber(coin.current_price)}</div>
 
             <div class="crypto-stats">
                 <div class="stat">
                     <div class="stat-label">Market Cap</div>
-                    <div class="stat-value">$${marketCap}</div>
+                    <div class="stat-value">$${this.formatLargeNumber(coin.market_cap)}</div>
                 </div>
                 <div class="stat">
                     <div class="stat-label">24h Change</div>
@@ -346,31 +407,26 @@ class CryptoApp {
             </a>
         `;
 
-        grid.appendChild(card);
+        const grid = document.getElementById('cryptoGrid');
+        if (grid) grid.appendChild(card);
 
-        // Try fetch chart data; if fails, generate fallback demo data (keeps UI consistent)
-        let chartData = null;
-        try {
-            const chartUrl = `${this.apiBase}/coins/${coin.id}/market_chart?vs_currency=usd&days=1`;
-            chartData = await this._safeFetchJson(chartUrl);
-        } catch (err) {
-            // silently fallback to generated demo series when chart fetch fails
-            const currentPrice = coin.current_price || 0;
-            const change = (coin.price_change_percentage_24h || 0) / 100;
-            const startPrice = currentPrice === 0 ? 0 : currentPrice / (1 + change || 1);
+        // If chartData missing or malformed, generate fallback 24h data
+        if (!chartData || !Array.isArray(chartData.prices) || chartData.prices.length === 0) {
+            const currentPrice = typeof coin.current_price === 'number' ? coin.current_price : 0;
+            const change = (typeof coin.price_change_percentage_24h === 'number') ? (coin.price_change_percentage_24h / 100) : 0;
+            const startPrice = (currentPrice === 0 || !isFinite(1 + change)) ? currentPrice : (currentPrice / (1 + change));
             chartData = { prices: [] };
             for (let i = 0; i < 24; i++) {
                 const timestamp = Date.now() - (23 - i) * 60 * 60 * 1000;
                 const progress = i / 23;
                 const noise = (Math.random() - 0.5) * currentPrice * 0.02;
-                const pricePoint = startPrice + (currentPrice - startPrice) * progress + noise;
-                chartData.prices.push([timestamp, pricePoint]);
+                const price = startPrice + (currentPrice - startPrice) * progress + noise;
+                chartData.prices.push([timestamp, price]);
             }
         }
 
         const canvas = document.getElementById(`chart-${coin.id}`);
         if (canvas && chartData && Array.isArray(chartData.prices) && chartData.prices.length > 0) {
-            // store data for potential redraws
             try {
                 canvas.dataset.prices = JSON.stringify(chartData.prices);
                 canvas.dataset.positive = (change24 >= 0).toString();
@@ -387,7 +443,7 @@ class CryptoApp {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
 
-        // ensure canvas has reasonable size
+        // ensure canvas size
         if (!canvas.width || !canvas.height) {
             canvas.width = canvas.offsetWidth || 400;
             canvas.height = canvas.offsetHeight || 120;
@@ -400,7 +456,6 @@ class CryptoApp {
             return;
         }
 
-        // normalize prices
         const cleaned = prices.filter(p => Array.isArray(p) && p.length >= 2 && isFinite(p[1]));
         if (cleaned.length === 0) {
             this.showChartPlaceholder(canvasId);
@@ -411,22 +466,20 @@ class CryptoApp {
         const height = canvas.height;
         const padding = 10;
 
-        // Clear
         ctx.clearRect(0, 0, width, height);
 
         const priceValues = cleaned.map(p => p[1]);
         const minPrice = Math.min(...priceValues);
         const maxPrice = Math.max(...priceValues);
-        const priceRange = maxPrice - minPrice || 1;
+        const priceRange = (maxPrice - minPrice) || 1;
 
-        // Area gradient
         const lineColor = isPositive ? '#22c55e' : '#ef4444';
         const gradientColor = isPositive ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
         const gradient = ctx.createLinearGradient(0, 0, 0, height);
         gradient.addColorStop(0, gradientColor);
         gradient.addColorStop(1, 'rgba(255,255,255,0)');
 
-        // draw area
+        // area
         ctx.beginPath();
         for (let i = 0; i < cleaned.length; i++) {
             const x = padding + (i / (cleaned.length - 1)) * (width - 2 * padding);
@@ -440,7 +493,7 @@ class CryptoApp {
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // draw line with glow
+        // line with glow
         ctx.beginPath();
         ctx.lineWidth = 2;
         ctx.strokeStyle = lineColor;
@@ -502,6 +555,7 @@ class CryptoApp {
         const el = document.getElementById('loading');
         if (el) el.style.display = 'block';
     }
+
     hideLoading() {
         const el = document.getElementById('loading');
         if (el) el.style.display = 'none';
@@ -510,27 +564,17 @@ class CryptoApp {
     showError(message) {
         const errorElement = document.getElementById('errorMessage');
         if (!errorElement) {
-            // fallback to alert if container missing
-            alert(message + ' Please reload the page.');
+            // fallback to alert if developer removed container
+            alert(message);
             return;
         }
-        errorElement.textContent = message + ' Please reload the page.';
+        errorElement.textContent = message;
         errorElement.style.display = 'block';
     }
 
     hideError() {
         const errorElement = document.getElementById('errorMessage');
         if (errorElement) errorElement.style.display = 'none';
-    }
-
-    // ------------ Small safe fetch wrapper (single attempt, no retries) -------------
-    async _safeFetchJson(url) {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) {
-            // throw so callers can show a user-friendly message
-            throw new Error(`HTTP ${res.status}`);
-        }
-        return await res.json();
     }
 }
 
