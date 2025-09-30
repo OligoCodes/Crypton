@@ -1,4 +1,4 @@
 # Crypton
 Your No. 1 crypto price checker with charts
 
-(https://github.com/OligoCodes/Crypton/blob/main/crypton.png)
+[](https://raw.githubusercontent.com/OligoCodes/Crypton/refs/heads/main/crypton.png)
