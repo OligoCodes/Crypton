@@ -1,2 +1,2 @@
 # Crypton
-Your No. 1 crypto proce checker with charts
+Your No. 1 crypto price checker with charts
