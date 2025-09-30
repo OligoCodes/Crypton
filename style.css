@@ -14,24 +14,26 @@
  --success-color: #22c55e;
  --error-color: #ef4444;
  --chart-bg: #f8f9fa;
+ --ts: transparent;
 }
 
  [data-theme="dark"] {
  /* Dark theme variables */
  --bg-primary: #1a1a1a;
  --bg-secondary: #2d2d2d;
- --bg-hero: linear-gradient(135deg, #4c63d2 0%, #5a4fcf 100%);
+ --bg-hero: linear-gradient(135deg, #04d3e6 0%, #07e5f0 100%);
  --text-primary: #ffffff;
  --text-secondary: #cccccc;
  --text-muted: #888888;
  --card-bg: #2d2d2d;
  --card-shadow: rgba(0, 0, 0, 0.3);
  --border-color: #404040;
- --accent-color: #667eea;
- --accent-hover: #7c8ef0;
+ --accent-color: #04d3e6;
+ --accent-hover: #07e5f0;
  --success-color: #22c55e;
  --error-color: #ef4444;
  --chart-bg: #3a3a3a;
+ --ts: 0 0 2px rgba(4, 211, 230);
  }
 
  body {
@@ -80,12 +82,12 @@
  .logo {
  font-size: 1.8rem;
  font-weight: 700;
- color: var(--accent-color);
+ color: #07e5f0;
  text-decoration: none;
  display: flex;
  align-items: center;
  gap: 8px;
- text-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+ text-shadow: var(--ts);
  transition: all 0.3s ease;
  }
 
@@ -266,7 +268,7 @@
    left: 0;
    right: 0;
    bottom: 0;
-   background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea;stop-opacity:0.8" /><stop offset="100%" style="stop-color:%23764ba2;stop-opacity:0.8" /></linearGradient></defs><rect width="1200" height="400" fill="url(%23grad1)"/><circle cx="200" cy="100" r="50" fill="rgba(255,255,255,0.1)" opacity="0.6"><animate attributeName="cy" values="100;120;100" dur="4s" repeatCount="indefinite"/></circle><circle cx="800" cy="150" r="30" fill="rgba(255,255,255,0.1)" opacity="0.4"><animate attributeName="cx" values="800;820;800" dur="3s" repeatCount="indefinite"/></circle><circle cx="1000" cy="80" r="40" fill="rgba(255,255,255,0.1)" opacity="0.5"><animate attributeName="r" values="40;50;40" dur="5s" repeatCount="indefinite"/></circle><path d="M0,300 Q300,200 600,250 T1200,200 L1200,400 L0,400 Z" fill="rgba(255,255,255,0.05)"/></svg>');
+   background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23066dcc;stop-opacity:0.8" /><stop offset="100%" style="stop-color:%2307e5f0;stop-opacity:0.8" /></linearGradient></defs><rect width="1200" height="400" fill="url(%23grad1)"/><circle cx="200" cy="100" r="50" fill="rgba(255,255,255,0.1)" opacity="0.6"><animate attributeName="cy" values="100;120;100" dur="4s" repeatCount="indefinite"/></circle><circle cx="800" cy="150" r="30" fill="rgba(255,255,255,0.1)" opacity="0.4"><animate attributeName="cx" values="800;820;800" dur="3s" repeatCount="indefinite"/></circle><circle cx="1000" cy="80" r="40" fill="rgba(255,255,255,0.1)" opacity="0.5"><animate attributeName="r" values="40;50;40" dur="5s" repeatCount="indefinite"/></circle><path d="M0,300 Q300,200 600,250 T1200,200 L1200,400 L0,400 Z" fill="rgba(255,255,255,0.05)"/></svg>');
    background-size: cover;
    background-position: center;
  }
@@ -304,6 +306,7 @@
    font-size: 1.5rem;
    transition: transform 0.3s ease, color 0.3s ease;
    padding: 10px;
+   width: 60px;
    border-radius: 50%;
    background: rgba(255,255,255,0.1);
    backdrop-filter: blur(10px);
@@ -383,6 +386,7 @@
    border: none;
    padding: 10px 15px;
    border-radius: 50%;
+   height: 40px;
    cursor: pointer;
    transition: all 0.3s ease;
  }
@@ -648,64 +652,70 @@
 
  /* Footer */
  .footer {
- background: var(--bg-secondary);
- color: var(--text-primary);
- text-align: center;
- padding: 40px 0;
- border-top: 1px solid var(--border-color);
- transition: all 0.3s ease;
- } 
+        background: #16213e;
+        padding: 3rem 2rem 2rem;
+        text-align: center;
+        border-top: 1px solid var(--border-color);
+}
 
- .Jesus-section {
- margin-bottom: 20px;
- }
+.Jesus-section {
+        margin-bottom: 2rem;
+}
 
- .Jesus-text {
- font-size: 1.1rem;
- color: var(--text-secondary);
- margin: 0;
- }
+.Jesus-text {
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+}
 
- .Jesus {
- color: var(--accent-color);
- font-weight: 700;
- text-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
- }
+.Jesus {
+        color: var(--accent-color);
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+}
 
- .footer .social-links {
- margin: 20px 0;
- gap: 15px;
-   }    
- 
 
- .footer .social-link {
- color: var(--text-secondary);
- font-size: 1.3rem;
- padding: 10px;
- border-radius: 50%;
- background: var(--card-bg);
- transition: all 0.3s ease;
- text-decoration: none;
- display: inline-flex;
- align-items: center;
- justify-content: center;
- width: 45px;
- height: 45px;
- border: 1px solid var(--border-color);
- }
+.Jesus:hover {
+        color: #12D7FF;
+        text-shadow: 0 0 10px var(--accent-red);
+}
 
- .footer .social-link:hover {
- color: var(--accent-color);
- transform: translateY(-3px) scale(1.1);
- box-shadow: 0 5px 15px var(--card-shadow);
- }
+.social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+}
 
- .copyright {
- font-size: 0.9rem;
- color: var(--text-muted);
- margin: 20px 0 0 0;
- } 
 
+.social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+    
+.social-link:hover {
+    color: var(--accent-color);
+    transform: translateY(-3px), scale(1.1);
+    box-shadow: 0 5px 15px var(--card-shadow);
+}
+
+.copyright {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-family: Montserrat;
+}
  /* Error Message */
  .error-message {
  background: rgba(239, 68, 68, 0.1);
